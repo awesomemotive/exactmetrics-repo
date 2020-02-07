@@ -30,7 +30,7 @@ For the lite version please use exactmetrics.com [Lite support](https://www.exac
 For users of the pro version, please use the support form, located on the Support tab of the My Account page of our website (note: you must be logged in & have 
 an active license to use this form).
 
-Please report security issues to support@exactmetrics.com
+Please report security issues via our [Lite support contact form](https://www.exactmetrics.com/lite-support/) with a message containing "SECURITY" (all caps) and it will be routed to our security team. Users who send non-security messages to abuse this workflow will be permanently banned from future support from ExactMetrics, even if a paid customer.
 
 ## Backwards Compatibility Guidelines for Developers ##
 ExactMetrics does not garuntee backwards compatibility of any classes or functions. We make a best effort attempt to have backwards compatibility on actions or filters.
