@@ -1,10 +1,10 @@
 # [ExactMetrics](https://www.exactmetrics.com) #
 Google Analytics made simple for WordPress<br />
-![Plugin Version](https://img.shields.io/wordpress/plugin/v/.svg?maxAge=2592000) 
+![Plugin Version](https://img.shields.io/wordpress/plugin/v/google-analytics-dashboard-for-wp.svg?maxAge=2592000) 
 ![Total Downloads](https://img.shields.io/wordpress/plugin/dt/google-analytics-dashboard-for-wp.svg?maxAge=2592000)
 ![WordPress Compatibility](https://img.shields.io/wordpress/v/google-analytics-dashboard-for-wp.svg?maxAge=2592000)
 [![Minimum PHP Version](https://img.shields.io/badge/php-%3E%3D%205.2-8892BF.svg?style=flat-square)](https://php.net/)
-[![License](https://img.shields.io/badge/license-GPL--2.0%2B-red.svg)
+![License](https://img.shields.io/badge/license-GPL--2.0%2B-red.svg)
 [![Build Status](https://scrutinizer-ci.com/g/awesomemotive/exactmetrics-repo/badges/build.png?b=master)](https://scrutinizer-ci.com/g/awesomemotive/exactmetrics-repo/build-status/master)
 [![Code Intelligence Status](https://scrutinizer-ci.com/g/awesomemotive/exactmetrics-repo/badges/code-intelligence.svg?b=master)](https://scrutinizer-ci.com/code-intelligence)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/awesomemotive/exactmetrics-repo/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/awesomemotive/exactmetrics-repo/?branch=master)
