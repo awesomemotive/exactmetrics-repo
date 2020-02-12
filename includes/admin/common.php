@@ -31,7 +31,7 @@ function exactmetrics_is_settings_page() {
 		$settings_page = true;
 	}
 
-	if ( $current_screen->id === 'insights_page_exactmetrics_settings' ) {
+	if ( $current_screen->id === 'exactmetrics_page_exactmetrics_settings' ) {
 		$settings_page = true;
 	}
 

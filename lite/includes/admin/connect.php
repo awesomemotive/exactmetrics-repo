@@ -59,7 +59,7 @@ class ExactMetrics_Connect {
 		}
 
 		// Verify pro version is not installed.
-		$active = activate_plugin( 'exactmetrics-premium/googleanalytics-premium.php', false, false, true );
+		$active = activate_plugin( 'exactmetrics-premium/exactmetrics-premium.php', false, false, true );
 		if ( ! is_wp_error( $active ) ) {
 			// Deactivate plugin.
 			deactivate_plugins( plugin_basename( EXACTMETRICS_PLUGIN_FILE ), false, false );
@@ -120,7 +120,7 @@ class ExactMetrics_Connect {
 		// Delete so cannot replay.
 		delete_option( 'exactmetrics_connect_token' );
 		// Set the current screen to avoid undefined notices.
-		set_current_screen( 'insights_page_exactmetrics_settings' );
+		set_current_screen( 'exactmetrics_page_exactmetrics_settings' );
 		// Prepare variables.
 		$url = esc_url_raw(
 			add_query_arg(
@@ -135,7 +135,7 @@ class ExactMetrics_Connect {
 			wp_send_json_success( esc_html__( 'Plugin installed & activated.', 'google-analytics-dashboard-for-wp' ) );
 		}
 		// Verify pro not installed.
-		$active = activate_plugin( 'exactmetrics-premium/googleanalytics-premium.php', $url, false, true );
+		$active = activate_plugin( 'exactmetrics-premium/exactmetrics-premium.php', $url, false, true );
 		if ( ! is_wp_error( $active ) ) {
 			deactivate_plugins( plugin_basename( EXACTMETRICS_PLUGIN_FILE ), false, false );
 			wp_send_json_success( esc_html__( 'Plugin installed & activated.', 'google-analytics-dashboard-for-wp' ) );

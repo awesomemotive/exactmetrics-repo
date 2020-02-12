@@ -239,7 +239,7 @@ function exactmetrics_admin_footer( $text ) {
     if ( ! empty( $current_screen->id ) && strpos( $current_screen->id, 'exactmetrics' ) !== false ) {
         $url  = 'https://wordpress.org/support/view/plugin-reviews/google-analytics-dashboard-for-wp?filter=5';
         // Translators: Placeholders add a link to the wordpress.org repository.
-        $text = sprintf( esc_html__( 'Please rate %1$sExactMetrics%s %2$s on %3$s %4$sWordPress.org%5$s to help us spread the word. Thank you from the ExactMetrics team!', 'google-analytics-dashboard-for-wp' ), '<strong>', '</strong>', '<a class="exactmetrics-no-text-decoration" href="' .  $url . '" target="_blank" rel="noopener noreferrer"><i class="monstericon-star"></i><i class="monstericon-star"></i><i class="monstericon-star"></i><i class="monstericon-star"></i><i class="monstericon-star"></i></a>', '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">', '</a>' );
+        $text = sprintf( esc_html__( 'Please rate %1$sExactMetrics%2$s on %3$s %4$sWordPress.org%5$s to help us spread the word. Thank you from the ExactMetrics team!', 'google-analytics-dashboard-for-wp' ), '<strong>', '</strong>', '<a class="exactmetrics-no-text-decoration" href="' .  $url . '" target="_blank" rel="noopener noreferrer"><i class="monstericon-star"></i><i class="monstericon-star"></i><i class="monstericon-star"></i><i class="monstericon-star"></i><i class="monstericon-star"></i></a>', '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">', '</a>' );
     }
     return $text;
 }

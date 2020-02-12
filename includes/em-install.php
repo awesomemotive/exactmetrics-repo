@@ -9,7 +9,7 @@
  *
  * @package ExactMetrics
  * @subpackage Install/Upgrade
- * @since 6.0.0
+ * @since 1.0.0
  */
 
 // Exit if accessed directly
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * as well as automatic (non-user initiated)
  * upgrade routines.
  *
- * @since 6.0.0
+ * @since 1.0.0
  * @access public
  */
 class ExactMetrics_Install {
@@ -60,73 +60,14 @@ class ExactMetrics_Install {
 		$version = get_option( 'exactmetrics_current_version', false );
 		$cachec  = false; // have we forced an object cache to be cleared already (so we don't clear it unnecessarily)
 
-		// if new install or Yoast Era instal
 		if ( ! $version ) {
-			// See if from Yoast
-			$yoast   = get_option( 'yst_ga', false );
-
-			// In case from Yoast, start from scratch
-			delete_option( 'yoast-ga-access_token' );
-			delete_option( 'yoast-ga-refresh_token' );
-			delete_option( 'yst_ga' );
-			delete_option( 'yst_ga_api' );
 
 			$this->new_install();
 
 			// set db version (Do not increment! See below large comment)
-			update_option( 'exactmetrics_db_version', '7.4.0' );
+			update_option( 'exactmetrics_db_version', '1.0.0' );
 
-			// Remove Yoast hook if present
-			if ( wp_next_scheduled( 'yst_ga_aggregate_data' ) ) {
-				wp_clear_scheduled_hook( 'yst_ga_aggregate_data' );
-			}
-
-			// Clear cache since coming from Yoast
-			if ( ! $cachec && ! empty( $yoast ) ) {
-				wp_cache_flush();
-				$cachec = true;
-			}
 		} else { // if existing install
-			if ( version_compare( $version, '6.0.11', '<' ) ) {
-				if ( ! $cachec ) {
-					wp_cache_flush();
-					$cachec = true;
-				}
-			}
-
-			if ( version_compare( $version, '7.0.0', '<' ) ) {
-				$this->v700_upgrades();
-			}
-
-			if ( version_compare( $version, '7.4.0', '<' ) ) {
-				$this->v740_upgrades();
-				// Do not increment! See below large comment
-				update_option( 'exactmetrics_db_version', '7.4.0' );
-			}
-
-			if ( version_compare( $version, '7.5.0', '<' ) ) {
-				$this->v750_upgrades();
-			}
-
-			if ( version_compare( $version, '7.6.0', '<' ) ) {
-				$this->v760_upgrades();
-			}
-
-			if ( version_compare( $version, '7.7.1', '<' ) ) {
-				$this->v771_upgrades();
-			}
-
-			if ( version_compare( $version, '7.8.0', '<' ) ) {
-				$this->v780_upgrades();
-			}
-
-			if ( version_compare( $version, '7.9.0', '<' ) ) {
-				$this->v790_upgrades();
-			}
-
-			if ( version_compare( $version, '7.10.0', '<' ) ) {
-				$this->v7100_upgrades();
-			}
 
 			// Do not use. See exactmetrics_after_install_routine comment below.
 			do_action( 'exactmetrics_after_existing_upgrade_routine', $version );
@@ -193,7 +134,7 @@ class ExactMetrics_Install {
 		 * 					 	automatically), you should use this function to get the
 		 * 					 	name of the option to retrieve.
 		 *
-		 * Therefore you should never increment mi_db_version in this file and always increment mi_current_version.
+		 * Therefore you should never increment exactmetrics_db_version in this file and always increment exactmetrics_current_version.
 		 */
 	}
 
@@ -242,9 +183,43 @@ class ExactMetrics_Install {
 	 * @return array
 	 */
 	public function get_settings_from_gadwp() {
-		$em_legacy_options = json_decode( get_option( 'gadwp_options', false ), true );
+		$em_legacy_options = get_option( 'gadwp_options', '' );
+		$em_legacy_options = json_decode( $em_legacy_options, true );
 		$settings          = $this->get_exactmetrics_default_values();
 
+		if ( ! function_exists( 'is_plugin_active_for_network' ) ) {
+			require_once ABSPATH . '/wp-admin/includes/plugin.php';
+		}
+		// If set to use network wide auth, update the manual UA for all sites.
+		$plugin = plugin_basename( EXACTMETRICS_PLUGIN_FILE );
+		if ( is_multisite() && is_plugin_active_for_network( $plugin ) ) {
+			$network_routine_ran = get_site_option( 'gadwp_network_import', false );
+			if ( false === $network_routine_ran ) {
+				$em_legacy_network_options = get_site_option( 'gadwp_network_options', '' );
+				$em_legacy_network_options = json_decode( $em_legacy_network_options, true );
+
+				if ( ! empty( $em_legacy_network_options['network_mode'] ) && $em_legacy_network_options['network_mode'] && ! empty( $em_legacy_network_options['network_tableid'] ) && is_array( $em_legacy_network_options['network_tableid'] ) ) {
+					foreach ( $em_legacy_network_options['network_tableid'] as $site_id => $network_profile ) {
+						switch_to_blog( $site_id );
+
+						$profile_data = array();
+						foreach ( $em_legacy_network_options['ga_profiles_list'] as $profile ) {
+							if ( ! empty( $profile[1] ) && $network_profile === $profile[1] ) {
+								$profile_data = $profile;
+								break;
+							}
+						}
+						if ( ! empty( $profile_data ) && is_array( $profile_data ) && ! empty( $profile_data[2] ) ) {
+							ExactMetrics()->auth->set_manual_ua( $profile_data[2] );
+						}
+
+						restore_current_blog();
+					}
+				}
+
+				update_site_option( 'gadwp_network_import', EXACTMETRICS_VERSION );
+			}
+		}
 		// Save the manual UA to make sure tracking keeps working.
 		if ( ! empty( $em_legacy_options['tableid_jail'] ) && is_array( $em_legacy_options['ga_profiles_list'] ) && ! empty( $em_legacy_options['ga_profiles_list'] ) ) {
 			$profile_data = array();
@@ -395,6 +370,9 @@ class ExactMetrics_Install {
 		// Transfer Demographics
 		$settings['demographics'] = ! empty( $em_legacy_options['ga_dash_remarketing'] ) ? 1 : 0;
 
+		// Enable compat mode
+		$settings['gatracker_compatibility_mode'] = true;
+
 
 		$settings['gadwp_migrated'] = time();
 
@@ -468,377 +446,5 @@ class ExactMetrics_Install {
 				);
 			}
 		}
-	}
-
-	/**
-	 * ExactMetrics Version 7.0 upgrades.
-	 *
-	 * This function does the
-	 * upgrade routine from ExactMetrics 6.2->7.0.
-	 *
-	 * @since 7.0.0
-	 * @access public
-	 *
-	 * @return void
-	 */
-	public function v700_upgrades() {
-		// 1. Default all event tracking and tracking to GA + JS respectively
-			// 3a Set tracking_mode to use analytics.js
-			$this->new_settings['tracking_mode' ] = 'analytics';
-
-
-			// 3b Set events mode to use JS if the events mode is not set explicitly to none
-			if ( empty( $this->new_settings['events_mode' ] ) || $this->new_settings['events_mode' ] !== 'none' ) {
-				$this->new_settings['events_mode' ] = 'js';
-			}
-
-		// 2. Migrate manual UA codes
-			// 2a Manual UA has the lowest priority
-			if ( ! empty( $this->new_settings['manual_ua_code' ] ) ) {
-				// Set as manual UA code
-				is_network_admin() ? update_site_option( 'exactmetrics_network_profile', array( 'manual' => $this->new_settings['manual_ua_code' ] ) ) : update_option( 'exactmetrics_site_profile', array( 'manual' => $this->new_settings['manual_ua_code' ] ) );
-			}
-
-			// 2b Then try the oAuth UA code
-			if ( ! empty( $this->new_settings['analytics_profile_code' ] ) ) {
-				// Set as manual UA code
-				is_network_admin() ? update_site_option( 'exactmetrics_network_profile', array( 'manual' => $this->new_settings['analytics_profile_code' ] ) ) : update_option( 'exactmetrics_site_profile', array( 'manual' => $this->new_settings['analytics_profile_code' ] ) );
-			}
-
-		// 3. Migrate License keys
-		if ( is_multisite() ) {
-			$ms_license = get_site_option( 'exactmetrics_license', '' );
-			if ( $ms_license ) {
-				update_site_option( 'exactmetrics_network_license_updates', get_site_option( 'exactmetrics_license_updates', '' ) );
-				update_site_option( 'exactmetrics_network_license', $ms_license );
-			}
-		}
-	}
-
-	/**
-	 * Upgrade routine for the new settings panel, onboarding wizard, and the internal-as-outbound v2 settings system.
-	 */
-	public function v740_upgrades() {
-
-		// 1. Settings Conversions:
-			// Convert affiliate field to repeater format
-			if ( ! empty( $this->new_settings['track_internal_as_outbound'] ) ) {
-				$affiliate_old_paths = $this->new_settings['track_internal_as_outbound'];
-				$affiliate_old_label = isset( $this->new_settings['track_internal_as_label'] ) ? $this->new_settings['track_internal_as_label'] : '';
-
-				$new_paths = explode( ',', $affiliate_old_paths );
-
-				$this->new_settings['affiliate_links'] = array();
-				if ( ! empty( $new_paths ) ) {
-					$this->new_settings['enable_affiliate_links'] = true;
-					foreach ( $new_paths as $new_path ) {
-						$this->new_settings['affiliate_links'][] = array(
-							'path'  => $new_path,
-							'label' => $affiliate_old_label,
-						);
-					}
-				}
-
-				$settings = array(
-					'track_internal_as_outbound',
-					'track_internal_as_label',
-				);
-				foreach ( $settings as $setting ) {
-					if ( ! empty( $this->new_settings[ $setting ] ) ) {
-						unset( $this->new_settings[ $setting ] );
-					}
-				}
-			}
-
-			// Update option to disable just reports or also the dashboard widget.
-			if ( isset( $this->new_settings['dashboards_disabled'] ) && $this->new_settings['dashboards_disabled'] ) {
-				$this->new_settings['dashboards_disabled'] = 'disabled';
-			}
-
-			$this->new_settings['tracking_mode'] = 'analytics';
-			$this->new_settings['events_mode']   = 'js';
-
-			// If opted in during allow_tracking era, move that over
-			if ( ! empty( $this->new_settings['allow_tracking'] ) ) {
-				$this->new_settings['anonymous_data'] = 1;
-			}
-
-		// 2. Remove Yoast stuff
-			delete_option( 'yoast-ga-access_token' );
-			delete_option( 'yoast-ga-refresh_token' );
-			delete_option( 'yst_ga' );
-			delete_option( 'yst_ga_api' );
-
-
-		// 3. Remove fake settings from other plugins using our key for some reason and old settings of ours
-			$settings = array(
-				'debug_mode',
-				'track_download_as',
-				'analytics_profile',
-				'analytics_profile_code',
-				'analytics_profile_name',
-				'manual_ua_code',
-				'track_outbound',
-				'track_download_as',
-				'enhanced_link_attribution',
-				'oauth_version',
-				'exactmetrics_oauth_status',
-				'firebug_lite',
-				'google_auth_code',
-				'allow_tracking',
-			);
-
-			foreach ( $settings as $setting ) {
-				if ( ! empty( $this->new_settings[ $setting ] ) ) {
-					unset( $this->new_settings[ $setting ] );
-				}
-			}
-
-			$settings = array(
-				'_repeated',
-				'ajax',
-				'asmselect0',
-				'bawac_force_nonce',
-				'icl_post_language',
-				'saved_values',
-				'mlcf_email',
-				'mlcf_name',
-				'cron_failed',
-				'undefined',
-				'cf_email',
-				'cf_message',
-				'cf_name',
-				'cf_number',
-				'cf_phone',
-				'cf_subject',
-				'content',
-				'credentials',
-				'cron_failed',
-				'cron_last_run',
-				'global-css',
-				'grids',
-				'page',
-				'punch-fonts',
-				'return_tab',
-				'skins',
-				'navigation-skins',
-				'title',
-				'type',
-				'wpcf_email',
-				'wpcf_your_name',
-			);
-
-			foreach ( $settings as $setting ) {
-				if ( ! empty( $this->new_settings[ $setting ] ) ) {
-					unset( $this->new_settings[ $setting ] );
-				}
-			}
-
-		// 4. Remove old crons
-			if ( wp_next_scheduled( 'exactmetrics_daily_cron' ) ) {
-				wp_clear_scheduled_hook( 'exactmetrics_daily_cron' );
-			}
-			if ( wp_next_scheduled( 'exactmetrics_send_tracking_data' ) ) {
-				wp_clear_scheduled_hook( 'exactmetrics_send_tracking_data' );
-			}
-
-			if ( wp_next_scheduled( 'exactmetrics_send_tracking_checkin' ) ) {
-				wp_clear_scheduled_hook( 'exactmetrics_send_tracking_checkin' );
-			}
-
-			if ( wp_next_scheduled( 'exactmetrics_weekly_cron' ) ) {
-				wp_clear_scheduled_hook( 'exactmetrics_weekly_cron' );
-			}
-
-			if ( wp_next_scheduled( 'yst_ga_aggregate_data' ) ) {
-				wp_clear_scheduled_hook( 'yst_ga_aggregate_data' );
-			}
-
-			delete_option( 'exactmetrics_tracking_last_send' );
-			delete_option( 'mi_tracking_last_send' );
-
-		// 5. Remove old option
-			delete_option( 'exactmetrics_settings_version' );
-	}
-
-
-	/**
-	 * Upgrade routine
-	 */
-	public function v750_upgrades() {
-		// 1. One time re-prompt for anonymous data (due to migration bug now fixed)
-		// if ( ! exactmetrics_is_pro_version() ) {
-		// 	if ( empty( $this->new_settings[ 'anonymous_data' ] ) ) {
-		// 		update_option( 'exactmetrics_tracking_notice', 0 );
-		// 	}
-		// }
-		//
-		// 2. Clear old settings ( 	'tracking_mode','events_mode',)
-
-
-		// 3. Attempt to extract the cross-domain settings from the Custom Code area and use in the new option.
-		$custom_code = isset( $this->new_settings['custom_code'] ) ? $this->new_settings['custom_code'] : '';
-		if ( ! empty( $custom_code ) ) {
-			$pattern = '/(?:\'linker:autoLink\', )(?:\[)(.*)(?:\])/m';
-			preg_match_all( $pattern, $custom_code, $matches, PREG_SET_ORDER, 0 );
-			if ( ! empty( $matches ) && isset( $matches[0] ) && isset( $matches[0][1] ) ) {
-				$cross_domains = array();
-				$domains       = explode( ',', $matches[0][1] );
-				foreach ( $domains as $key => $domain ) {
-					$domain          = trim( $domain );
-					$cross_domains[] = array(
-						'domain' => trim( $domain, '\'\"' ),
-					);
-				}
-				$this->new_settings['add_allow_linker'] = true;
-				$this->new_settings['cross_domains']    = $cross_domains;
-
-				$notices = get_option( 'exactmetrics_notices' );
-				if ( ! is_array( $notices ) ) {
-					$notices = array();
-				}
-				$notices['exactmetrics_cross_domains_extracted'] = false;
-				update_option( 'exactmetrics_notices', $notices );
-			}
-		}
-	}
-
-	/**
-	 * Upgrade routine for version 7.6.0
-	 */
-	public function v760_upgrades() {
-
-		$cross_domains = isset( $this->new_settings['cross_domains'] ) ? $this->new_settings['cross_domains'] : array();
-
-		if ( ! empty( $cross_domains ) && is_array( $cross_domains ) ) {
-			$current_domain = wp_parse_url( home_url() );
-			$current_domain = isset( $current_domain['host'] ) ? $current_domain['host'] : '';
-			if ( ! empty( $current_domain ) ) {
-				$regex = '/^(?:' . $current_domain . '|(?:.+)\.' . $current_domain . ')$/m';
-				foreach ( $cross_domains as $key => $cross_domain ) {
-					if ( ! isset( $cross_domain['domain'] ) ) {
-						continue;
-					}
-					preg_match( $regex, $cross_domain['domain'], $matches );
-					if ( count( $matches ) > 0 ) {
-						unset( $this->new_settings['cross_domains'][ $key ] );
-					}
-				}
-			}
-		}
-
-	}
-
-	/**
-	 * Upgrade routine for version 7.7.1
-	 */
-	public function v771_upgrades() {
-
-		if ( ! exactmetrics_is_pro_version() ) {
-			// We only need to run this for the Pro version.
-			return;
-		}
-		include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-
-		$plugin = 'wp-scroll-depth/wp-scroll-depth.php';
-		// Check if wp-scroll-depth is active and deactivate to avoid conflicts with the pro scroll tracking feature.
-		if ( is_plugin_active( $plugin ) ) {
-			deactivate_plugins( $plugin );
-		}
-
-	}
-
-	/**
-	 * Upgrade routine for version 7.8.0
-	 */
-	public function v780_upgrades() {
-
-		if ( exactmetrics_get_ua() ) {
-			// If we have a UA, don't show the first run notice.
-			exactmetrics_update_option( 'exactmetrics_first_run_notice', true );
-
-			// If they are already tracking when they upgrade, mark connected time as now.
-			$over_time = get_option( 'exactmetrics_over_time', array() );
-			if ( empty( $over_time['connected_date'] ) ) {
-				$over_time['connected_date'] = time();
-				update_option( 'exactmetrics_over_time', $over_time );
-			}
-		}
-
-	}
-
-	/**
-	 * Upgrade routine for version 7.9.0
-	 */
-	public function v790_upgrades() {
-
-		// If they are already tracking, don't show the notice.
-		if ( exactmetrics_get_ua() ) {
-			update_option( 'exactmetrics_frontend_tracking_notice_viewed', true );
-
-			// If they are already tracking when they upgrade & not already marked mark connected time as now.
-			// Adding this here again as 7.8.0 upgrade didn't run for all users.
-			$over_time = get_option( 'exactmetrics_over_time', array() );
-			if ( empty( $over_time['connected_date'] ) ) {
-				$over_time['connected_date'] = time();
-				update_option( 'exactmetrics_over_time', $over_time );
-			}
-		}
-
-	}
-
-	/**
-	 * Upgrade routine for version 8.0.0
-	 */
-	public function v7100_upgrades() {
-
-		// Remove exe js and tgz from file downloads tracking.
-		$current_downloads = isset( $this->new_settings['extensions_of_files'] ) ? $this->new_settings['extensions_of_files'] : array();
-
-		if ( ! empty( $current_downloads ) ) {
-			$extensions_to_remove = array(
-				'exe',
-				'js',
-				'tgz'
-			);
-			$extensions_to_add    = array(
-				'docx',
-				'pptx',
-				'xlsx',
-			);
-
-			$extensions         = explode( ',', $current_downloads );
-			$updated_extensions = array();
-
-			if ( ! empty( $extensions ) && is_array( $extensions ) ) {
-				foreach ( $extensions as $extension ) {
-					if ( ! in_array( $extension, $extensions_to_remove ) ) {
-						$updated_extensions[] = $extension;
-					}
-				}
-			}
-
-			foreach ( $extensions_to_add as $extension_to_add ) {
-				if ( ! in_array( $extension_to_add, $updated_extensions ) ) {
-					$updated_extensions[] = $extension_to_add;
-				}
-			}
-		} else {
-			$updated_extensions = array(
-				'pdf',
-				'doc',
-				'ppt',
-				'xls',
-				'zip',
-				'docx',
-				'pptx',
-				'xlsx',
-			);
-		}
-
-		$updated_extensions = implode( ',', $updated_extensions );
-
-		$this->new_settings['extensions_of_files'] = $updated_extensions;
-
 	}
 }
