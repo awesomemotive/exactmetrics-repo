@@ -6,7 +6,9 @@
  */
 
 // Exit if accessed directly.
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 $header_image     = exactmetrics_get_option( 'email_header_image', false );
 $background_color = '#e9eaec';
