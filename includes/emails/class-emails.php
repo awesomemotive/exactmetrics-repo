@@ -5,7 +5,7 @@
  *
  * This class handles all (notification) emails sent by ExactMetrics.
  *
- * Heavily influenced by the great AffiliateWP plugin by Pippin Williamson.
+ * Heavily influenced by the AffiliateWP plugin by Pippin Williamson.
  * https://github.com/AffiliateWP/AffiliateWP/blob/master/includes/emails/class-affwp-emails.php
  *
  * @since 7.10.5

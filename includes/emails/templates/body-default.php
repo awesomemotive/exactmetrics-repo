@@ -2,7 +2,7 @@
 /**
  * Email Body
  *
- * Heavily influenced by the great AffiliateWP plugin by Pippin Williamson.
+ * Heavily influenced by the AffiliateWP plugin by Pippin Williamson.
  * https://github.com/AffiliateWP/AffiliateWP/tree/master/templates/emails
  *
  * @since 7.10.5
