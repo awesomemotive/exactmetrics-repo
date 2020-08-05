@@ -57,7 +57,7 @@ function exactmetrics_modify_wordpress_autoupdater_setting( $html, $plugin_file,
 	} elseif ( $has_permission &&
 	           ( $is_main_free || $is_main_pro || ( $is_addon && $is_pro ) )
 	) {
-		$text  = __( 'Manage auto-updates', 'exactmetrics-premium' );
+		$text  = __( 'Manage auto-updates', 'google-analytics-dashboard-for-wp' );
 		$html .= '<br>' . sprintf( '<a href="%s"">%s</a>', admin_url( 'admin.php?page=exactmetrics_settings#/advanced' ), $text );
 		add_filter( "exactmetrics_is_autoupdate_setting_html_filtered_${plugin_file}", '__return_true' );
 	}
