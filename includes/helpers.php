@@ -1632,7 +1632,7 @@ function exactmetrics_get_frontend_analytics_script_atts() {
 			if ( ! empty( $attr_name ) ) {
 				$attr_string .= ' ' . sanitize_key( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
 			} else {
-				$attr_string .= ' ' . sanitize_key( $attr_value );
+				$attr_string .= ' ' . esc_attr( $attr_value );
 			}
 		}
 	}
