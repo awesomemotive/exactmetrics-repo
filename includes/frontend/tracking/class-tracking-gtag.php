@@ -118,7 +118,15 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 
 		// Add cross-domain tracking.
 		if ( is_array( $cross_domains ) && ! empty( $cross_domains ) ) {
-			$options['linker'] = array( $cross_domains );
+			$linker_domains = array();
+			foreach ( $cross_domains as $cross_domain ) {
+				if ( ! empty( $cross_domain['domain'] ) ) {
+					$linker_domains[] = $cross_domain['domain'];
+				}
+			}
+			$options['linker'] = json_encode( array(
+				'domains' => $linker_domains,
+			) );
 		}
 
 		$options = apply_filters( 'exactmetrics_frontend_tracking_options_gtag_before_pageview', $options );
@@ -245,6 +253,15 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 						}
 						?>
 					} );
+					<?php
+						/**
+						 * Extend or enhance the functionality by adding custom code to frontend
+						 * tracking via this hook.
+						 *
+						 * @since 7.15.0
+						 */
+						do_action( 'exactmetrics_frontend_tracking_gtag_after_pageview' );
+					?>
 					<?php echo esc_js( $compat ); ?>
 					<?php if ( apply_filters( 'exactmetrics_tracking_gtag_frontend_gatracker_compatibility', true ) ) { ?>
 					(
