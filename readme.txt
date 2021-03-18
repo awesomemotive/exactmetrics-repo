@@ -4,7 +4,7 @@ Donate link: http://www.wpbeginner.com/wpbeginner-needs-your-help/
 Tags: analytics,google analytics,google analytics dashboard,google analytics plugin,google analytics widget,gtag
 Requires at least: 3.8.0
 Tested up to: 5.6
-Stable tag: 6.6.0
+Stable tag: 6.7.0
 Requires PHP: 5.2
 License: GPL v3
 
@@ -164,6 +164,22 @@ You can translate Google Analytics Dashboard for WP by ExactMetrics on [translat
 4. Want more features? <a href="https://www.exactmetrics.com/?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion">Purchase ExactMetrics Pro</a>!
 
 == Changelog ==
+= 6.7.0: March 18, 2021 =
+- New: See exactly what report or setting is mentioned in the contextual education message with our new highlight feature.
+- Tweak: The Popular Posts Widget curated posts are now randomly displayed.
+- Tweak: The method used for sending server-side events now prevents preloading plugins from creating false events for more accurate stats.
+- Tweak: The Popular Posts styles are now loaded only when needed on the current page.
+- Tweak: A new filter to disable the random order of the posts in the Popular Posts widget was added.
+- Fix: The loading prompts in the reports area are now more consistent to avoid confusion.
+- Fix: Our compatibility layer for analytics.js was missing some parameters that could interfere with the bounce rate.
+
+= 6.6.2: February 22, 2021 =
+- Tweak: Our gtag.js compatibility layer now supports custom trackers used in some integrations loaded by other scripts.
+
+= 6.6.1: February 17, 2021 =
+- Tweak: We improved our gtag.js to analytics.js compatibility layer for better support on events added by other plugins.
+- Fix: Our link tracking feature was interfering with certain lightbox scripts when using externally hosted images.
+
 = 6.6.0: February 9, 2021 =
 - New: We've updated the plugin to use Google's Global Site Tag (gtag.js) tracking solution for a futureproof setup combined with our exclusive compatibility layer that enables existing analytics.js events integrations to continue to work seamlessly.
 - Tweak: We updated some CSS styles on our admin panel for improved compatibility with other plugins.
