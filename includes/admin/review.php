@@ -95,7 +95,7 @@ class ExactMetrics_Review {
 				$data['connected_date'] = time();
 			}
 
-			update_option( 'exactmetrics_over_time', $data );
+			update_option( 'exactmetrics_over_time', $data, false );
 			return;
 		}
 

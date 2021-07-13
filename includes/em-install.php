@@ -196,10 +196,11 @@ class ExactMetrics_Install {
 		$data = array(
 			'installed_version' => EXACTMETRICS_VERSION,
 			'installed_date'    => time(),
-			'installed_pro'     => exactmetrics_is_pro_version(),
+			'installed_pro'     => exactmetrics_is_pro_version() ? time() : false,
+			'installed_lite'     => exactmetrics_is_pro_version() ? false : time(),
 		);
 
-		update_option( 'exactmetrics_over_time', $data );
+		update_option( 'exactmetrics_over_time', $data, false );
 
 		// Let addons + MI Pro/Lite hook in here. @todo: doc as nonpublic
 		do_action( 'exactmetrics_after_new_install_routine', EXACTMETRICS_VERSION );

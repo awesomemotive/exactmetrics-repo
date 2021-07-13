@@ -50,6 +50,14 @@ function exactmetrics_admin_menu() {
 	// Add Popular Posts menu item.
 	add_submenu_page( $hook, __( 'Popular Posts:', 'google-analytics-dashboard-for-wp' ), __( 'Popular Posts', 'google-analytics-dashboard-for-wp' ), 'exactmetrics_save_settings', $submenu_base . '#/popular-posts' );
 
+    if ( function_exists( 'aioseo' ) ) {
+        $seo_url = exactmetrics_aioseo_dashboard_url();
+    } else {
+        $seo_url = $submenu_base . '#/seo';
+    }
+    // then SEO
+    add_submenu_page( $hook, __( 'SEO', 'google-analytics-dashboard-for-wp' ), __( 'SEO', 'google-analytics-dashboard-for-wp' ), 'manage_options', $seo_url );
+
     // then tools
     add_submenu_page( $hook, __( 'Tools:', 'google-analytics-dashboard-for-wp' ), __( 'Tools', 'google-analytics-dashboard-for-wp' ), 'manage_options', $submenu_base . '#/tools' );
 
@@ -61,8 +69,30 @@ function exactmetrics_admin_menu() {
 
     // Add About us page.
     add_submenu_page( $hook, __( 'About Us:', 'google-analytics-dashboard-for-wp' ), __( 'About Us', 'google-analytics-dashboard-for-wp' ), 'manage_options', $submenu_base . '#/about' );
+
+    if ( ! exactmetrics_is_pro_version() ) {
+	    add_submenu_page( $hook, __( 'Upgrade to Pro:', 'google-analytics-dashboard-for-wp' ), '<span class="exactmetrics-upgrade-submenu"> ' . __( 'Upgrade to Pro', 'google-analytics-dashboard-for-wp' ) . '</span>', 'exactmetrics_save_settings', exactmetrics_get_upgrade_link( 'admin-menu', 'submenu', "https://www.exactmetrics.com/lite/" ) );
+    }
+
 }
 add_action( 'admin_menu', 'exactmetrics_admin_menu' );
+
+/**
+ * Add this separately so all the Woo menu items are loaded and the position parameter works correctly.
+ */
+function exactmetrics_woocommerce_menu_item() {
+	// Add "Insights" sub menu item for WooCommerce Analytics menu
+	if ( class_exists( 'WooCommerce' ) && ! apply_filters( 'exactmetrics_disable_woo_analytics_menu', false ) ) {
+		if ( class_exists( 'ExactMetrics_eCommerce' ) ) {
+			add_submenu_page( 'wc-admin&path=/analytics/overview', 'ExactMetrics', 'ExactMetrics', 'exactmetrics_view_dashboard', admin_url( 'admin.php?page=exactmetrics_reports#/ecommerce' ), '', 2 );
+		} else {
+			$submenu_base = add_query_arg( 'page', 'exactmetrics_settings', admin_url( 'admin.php' ) );
+			add_submenu_page( 'wc-admin&path=/analytics/overview', 'ExactMetrics', 'ExactMetrics', 'manage_options', $submenu_base . '#/woocommerce-insights', '', 1 );
+		}
+	}
+}
+
+add_action( 'admin_menu', 'exactmetrics_woocommerce_menu_item', 11 );
 
 function exactmetrics_get_menu_hook() {
     $dashboards_disabled = exactmetrics_get_option( 'dashboards_disabled', false );
@@ -96,6 +126,14 @@ function exactmetrics_network_admin_menu() {
     add_submenu_page( $hook, __( 'Network Settings:', 'google-analytics-dashboard-for-wp' ), __( 'Network Settings', 'google-analytics-dashboard-for-wp' ), 'exactmetrics_save_settings', 'exactmetrics_network', 'exactmetrics_network_page' );
 
     add_submenu_page( $hook, __( 'General Reports:', 'google-analytics-dashboard-for-wp' ), __( 'Reports', 'google-analytics-dashboard-for-wp' ), 'exactmetrics_view_dashboard', 'exactmetrics_reports', 'exactmetrics_reports_page' );
+
+    if ( function_exists( 'aioseo' ) ) {
+        $seo_url = exactmetrics_aioseo_dashboard_url();
+    } else {
+        $seo_url = $submenu_base . '#/seo';
+    }
+    // then seo
+    add_submenu_page( $hook, __( 'SEO:', 'google-analytics-dashboard-for-wp' ), __( 'SEO', 'google-analytics-dashboard-for-wp' ), 'manage_options', $seo_url, 'exactmetrics_seo_page' );
 
     // then addons
     add_submenu_page( $hook, __( 'Addons:', 'google-analytics-dashboard-for-wp' ), '<span style="color:' . exactmetrics_menu_highlight_color() . '"> ' . __( 'Addons', 'google-analytics-dashboard-for-wp' ) . '</span>', 'exactmetrics_save_settings', $submenu_base . '#/addons' );
@@ -167,12 +205,6 @@ function exactmetrics_add_action_links( $links ) {
     $docs = '<a title="' . esc_html__( 'ExactMetrics Knowledge Base', 'google-analytics-dashboard-for-wp' ) . '" href="'. exactmetrics_get_url( 'all-plugins', 'kb-link', "https://www.exactmetrics.com/docs/" ) .'">' . esc_html__( 'Documentation', 'google-analytics-dashboard-for-wp' ) . '</a>';
     array_unshift( $links, $docs );
 
-    // If lite, show a link where they can get pro from
-    if ( ! exactmetrics_is_pro_version() ) {
-        $get_pro = '<a title="' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) .'" href="'. exactmetrics_get_upgrade_link( 'all-plugins', 'upgrade-link', "https://www.exactmetrics.com/docs/" ) .'">' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) . '</a>';
-        array_unshift( $links, $get_pro );
-    }
-
     // If Lite, support goes to forum. If pro, it goes to our website
     if ( exactmetrics_is_pro_version() ) {
         $support = '<a title="ExactMetrics Pro Support" href="'. exactmetrics_get_url( 'all-plugins', 'pro-support-link', "https://www.exactmetrics.com/my-account/support/" ) .'">' . esc_html__( 'Support', 'google-analytics-dashboard-for-wp' ) . '</a>';
@@ -189,6 +221,12 @@ function exactmetrics_add_action_links( $links ) {
 	}
 
     array_unshift( $links, $settings_link );
+
+	// If lite, show a link where they can get pro from
+	if ( ! exactmetrics_is_pro_version() ) {
+		$get_pro = '<a title="' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) .'" href="'. exactmetrics_get_upgrade_link( 'all-plugins', 'upgrade-link', "https://www.exactmetrics.com/lite/" ) .'" style="font-weight:700">' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) . '</a>';
+		array_unshift( $links, $get_pro );
+	}
 
     return $links;
 }
@@ -286,7 +324,7 @@ function exactmetrics_admin_setup_notices() {
         $urlone    = is_network_admin() ? network_admin_url( 'admin.php?page=exactmetrics-onboarding' ) : admin_url( 'admin.php?page=exactmetrics-onboarding' );
         $secondary = esc_html__( 'Learn More', 'google-analytics-dashboard-for-wp' );
         $urltwo    = $submenu_base . '#/about/getting-started';
-        $message   = esc_html__( 'ExactMetrics, WordPress analytics plugin, helps you connect your website with Google Analytics, so you can see how people find and use your website. Over 1 million website owners use ExactMetrics to see the stats that matter and grow their business.', 'google-analytics-dashboard-for-wp' );
+        $message   = esc_html__( 'ExactMetrics, WordPress analytics plugin, helps you connect your website with Google Analytics, so you can see how people find and use your website. Over 3 million website owners use ExactMetrics to see the stats that matter and grow their business.', 'google-analytics-dashboard-for-wp' );
         echo '<div class="notice notice-info"><p style="font-weight:700">'. $title .'</p><p>'. $message.'</p><p><a href="'. $urlone .'" class="button-primary">'. $primary .'</a>&nbsp;&nbsp;&nbsp;<a href="'. $urltwo .'" class="button-secondary">'. $secondary .'</a></p></div>';
         return;
     }

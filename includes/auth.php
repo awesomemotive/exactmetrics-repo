@@ -72,10 +72,18 @@ final class ExactMetrics_Auth {
 		$this->profile      = $data;
 
 		// If this is the first time, save the date when they connected.
-		$over_time = get_option( 'exactmetrics_over_time', array() );
-		if ( empty( $over_time['connected_date'] ) ) {
-			$over_time['connected_date'] = time();
-			update_option( 'exactmetrics_over_time', $over_time );
+		$over_time    = get_option( 'exactmetrics_over_time', array() );
+		$needs_update = false;
+		if ( exactmetrics_is_pro_version() && empty( $over_time['connected_date_pro'] ) ) {
+			$over_time['connected_date_pro'] = time();
+			$needs_update                    = true;
+		}
+		if ( ! exactmetrics_is_pro_version() && empty( $over_time['connected_date_lite'] ) ) {
+			$over_time['connected_date_lite'] = time();
+			$needs_update                     = true;
+		}
+		if ( $needs_update ) {
+			update_option( 'exactmetrics_over_time', $over_time, false );
 		}
 	}
 

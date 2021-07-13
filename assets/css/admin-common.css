@@ -74,3 +74,12 @@
 		position: relative;
 	}
 }
+
+.exactmetrics-submenu-highlight {
+	background: #7cc048;
+}
+
+.exactmetrics-submenu-highlight a span {
+	color: #fff;
+	font-weight: 600;
+}
