@@ -38,7 +38,7 @@ class ExactMetrics_Connect {
 		check_ajax_referer( 'mi-admin-nonce', 'nonce' );
 
 		// Check for permissions.
-		if ( ! current_user_can( 'install_plugins' ) ) {
+		if ( ! exactmetrics_can_install_plugins() ) {
 			wp_send_json_error( array( 'message' => esc_html__( 'You are not allowed to install plugins.', 'google-analytics-dashboard-for-wp' ) ) );
 		}
 
@@ -111,7 +111,7 @@ class ExactMetrics_Connect {
 		$post_oth = ! empty( $_REQUEST['oth'] ) ? sanitize_text_field( $_REQUEST['oth'] ) : '';
 		$post_url = ! empty( $_REQUEST['file'] ) ? $_REQUEST['file'] : '';
 		$license  = get_option( 'exactmetrics_connect', false );
-		$network  = ! empty( $license['network'] ) ? boolval( $license['network'] ) : false;
+		$network  = ! empty( $license['network'] ) ? (bool) $license['network'] : false;
 		if ( empty( $post_oth ) || empty( $post_url ) ) {
 			wp_send_json_error( $error );
 		}
@@ -177,12 +177,26 @@ class ExactMetrics_Connect {
 		if ( $installer->plugin_info() ) {
 			$plugin_basename = $installer->plugin_info();
 
+			// Check this before deactivating plugin.
+			$is_authed = ExactMetrics()->auth->is_authed();
+
 			// Deactivate the lite version first.
 			deactivate_plugins( plugin_basename( EXACTMETRICS_PLUGIN_FILE ), false, $network );
 
 			// Activate the plugin silently.
 			$activated = activate_plugin( $plugin_basename, '', $network, true );
 			if ( ! is_wp_error( $activated ) ) {
+				// Pro upgrade successful.
+				$over_time = get_option( 'exactmetrics_over_time', array() );
+
+				if ( empty( $over_time['installed_pro'] ) ) {
+					$over_time['installed_pro'] = time();
+					if ( $is_authed ) {
+						$over_time['connected_upgrade'] = time();
+					}
+					update_option( 'exactmetrics_over_time', $over_time );
+				}
+
 				wp_send_json_success( esc_html__( 'Plugin installed & activated.', 'google-analytics-dashboard-for-wp' ) );
 			} else {
 				// Reactivate the lite plugin if pro activation failed.

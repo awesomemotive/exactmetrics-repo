@@ -50,10 +50,10 @@ function exactmetrics_mp_api_call( $args = array() ) {
 	$default_body = array(
 		// Required: Version
 		'v'   => '1',
-		
+
 		// Required: UA code
 		'tid' => exactmetrics_get_ua_to_output( array( 'ecommerce' => $args ) ),
-		
+
 		// Required: User visitor ID
 		'cid' => exactmetrics_get_client_id( $payment_id ),
 
@@ -82,7 +82,10 @@ function exactmetrics_mp_api_call( $args = array() ) {
 		'ua'  => ! empty( $user_agent ) ?  $user_agent : $_SERVER['HTTP_USER_AGENT'],
 
 		// Optional: Time of the event
-		'z'   => time()
+		'z'   => time(),
+
+		// Developer id.
+		'did' => 'dNDMyYj',
 	);
 
 	$body = wp_parse_args( $body, $default_body );
@@ -119,13 +122,25 @@ function exactmetrics_mp_api_call( $args = array() ) {
 }
 
 function exactmetrics_mp_track_event_call( $args = array() ) {
+	$ua = exactmetrics_get_ua();
+
+	if ( empty( $ua ) ) {
+		return;
+	}
+
+	// Detect if browser request is a prefetch
+	if ( ( isset( $_SERVER["HTTP_X_PURPOSE"] ) && ( 'prefetch' === strtolower( $_SERVER["HTTP_X_PURPOSE"] ) ) ) ||
+	     ( isset( $_SERVER["HTTP_X_MOZ"] ) && ( 'prefetch' === strtolower( $_SERVER["HTTP_X_MOZ"] ) ) ) ) {
+		return;
+	}
+
 	$default_args = array(
 		// Change the default type to event
 		't'  => 'event',
 
 		// Required: Event Category
 		'ec' => '',
-		
+
 		// Required: Event Action
 		'ea' => '',
 
@@ -135,7 +150,9 @@ function exactmetrics_mp_track_event_call( $args = array() ) {
 		// Optional: Event Value
 		'ev' => null,
 	);
-	$args  = wp_parse_args( $args, $default_args );
+
+	$args         = wp_parse_args( $args, $default_args );
+
 	//$args = apply_filters( 'exactmetrics_mp_track_event_call', $args );
 
 	return exactmetrics_mp_api_call( $args );

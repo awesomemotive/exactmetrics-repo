@@ -47,13 +47,13 @@ function exactmetrics_track_user( $user_id = -1 ) {
 	}
 
 	$track_super_admin = apply_filters( 'exactmetrics_track_super_admins', false );
-	if ( $track_super_admin === false && is_multisite() && is_super_admin() ) {
+	if ( $user_id === -1 && $track_super_admin === false && is_multisite() && is_super_admin() ) {
 		$track_user = false;
 	}
 
-	// or if UA code is not entered
-	$ua_code = exactmetrics_get_ua();
-	if ( empty( $ua_code ) ) {
+	// or if tracking code is not entered
+	$tracking_ids = exactmetrics_get_tracking_ids();
+	if ( empty( $tracking_ids ) ) {
 		$track_user = false;
 	}
 
@@ -325,10 +325,10 @@ function exactmetrics_is_dev_url( $url = '' ) {
 
 		$tlds_to_check = array( '.local', ':8888', ':8080', ':8081', '.invalid', '.example', '.test' );
 		foreach ( $tlds_to_check as $tld ) {
-				if ( false !== strpos( $host, $tld ) ) {
-					$is_local_url = true;
-					break;
-				}
+			if ( false !== strpos( $host, $tld ) ) {
+				$is_local_url = true;
+				break;
+			}
 
 		}
 		if ( substr_count( $host, '.' ) > 1 ) {
@@ -929,7 +929,7 @@ function exactmetrics_is_network_active() {
 	}
 
 	if ( is_multisite() && is_plugin_active_for_network( plugin_basename( EXACTMETRICS_PLUGIN_FILE ) ) ) {
-	   return true;
+		return true;
 	} else {
 		return false;
 	}
@@ -1192,18 +1192,26 @@ function exactmetrics_get_page_title() {
 /**
  * Count the number of occurrences of UA tags inserted by third-party plugins.
  *
- * @param $body
+ * @param string $body
+ * @param string $type
  *
  * @return int
  */
-function exactmetrics_count_third_party_ua_codes( $body ) {
+function exactmetrics_count_third_party_ua_codes( $body, $type = 'ua' ) {
 	$count = 0;
 
-	// Grab all potential google site verification tags
-	$pattern = '/content="UA-[0-9-]+"/';
-	if ( preg_match_all( $pattern, $body, $matches ) ) {
-		// Raise the number of UA limits
-		$count += count( $matches[0] );
+	// If the ads addon is installed another UA is added to the page.
+	if ( class_exists( 'ExactMetrics_Ads' ) ) {
+		$count++;
+	}
+
+	// Count all potential google site verification tags
+	if ( $type === 'ua' ) {
+		$pattern = '/content="UA-[0-9-]+"/';
+
+		if ( preg_match_all( $pattern, $body, $matches ) ) {
+			$count += count( $matches[0] );
+		}
 	}
 
 	// Advanced Ads plugin (https://wpadvancedads.com)
@@ -1212,7 +1220,7 @@ function exactmetrics_count_third_party_ua_codes( $body ) {
 		$options = Advanced_Ads::get_instance()->options();
 
 		$pattern = '/UA-[0-9-]+/';
-		if ( isset( $options['ga-UID'] ) && preg_match( $pattern, $options['ga-UID'] ) ) {
+		if ( $type === 'ua' && isset( $options['ga-UID'] ) && preg_match( $pattern, $options['ga-UID'] ) ) {
 			++ $count;
 		}
 	}
@@ -1223,12 +1231,88 @@ function exactmetrics_count_third_party_ua_codes( $body ) {
 		$code = wppopups_setting( 'ua-code' );
 
 		$pattern = '/UA-[0-9-]+/';
-		if ( ! empty( $code ) && preg_match( $pattern, $code ) ) {
+		if ( $type === 'ua' && ! empty( $code ) && preg_match( $pattern, $code ) ) {
 			++ $count;
 		}
 	}
 
 	return $count;
+}
+
+/**
+ * Detect tracking code error depending on the type of tracking code
+ *
+ * @param string $body
+ * @param string $type
+ *
+ * @return array
+ */
+function exactmetrics_detect_tracking_code_error( $body, $type = 'ua' ) {
+	$errors = array();
+
+	$current_code = $type === 'ua'
+		? exactmetrics_get_ua_to_output()
+		: exactmetrics_get_v4_id_to_output();
+
+	// Translators: The placeholders are for making the "We noticed you're using a caching plugin" text bold.
+	$cache_error = sprintf( esc_html__( '%1$sWe noticed you\'re using a caching plugin or caching from your hosting provider.%2$s Be sure to clear the cache to ensure the tracking appears on all pages and posts. %3$s(See this guide on how to clear cache)%4$s.', 'google-analytics-dashboard-for-wp' ), '<b>', '</b>', ' <a href="https://www.wpbeginner.com/beginners-guide/how-to-clear-your-cache-in-wordpress/" target="_blank">', '</a>' );
+
+	// Check if the current UA code is actually present.
+	if ( $current_code && false === strpos( $body, $current_code ) ) {
+		// We have the tracking code but using another UA, so it's cached.
+		$errors[] = $cache_error;
+		return $errors;
+	}
+
+	if ( empty( $current_code ) ) {
+		return $errors;
+	}
+
+	if (
+		( $type === 'ua' && false === strpos( $body, '__gaTracker' ) ) ||
+		( $type === 'v4' && false === strpos( $body, '__gtagTracker' ) )
+	) {
+		$errors[] = $cache_error;
+		return $errors;
+	}
+
+	$limit = 'gtag' === ExactMetrics()->get_tracking_mode() ? 3 : 2;
+
+	// TODO: Need to re-evaluate this regularly when third party plugins start supporting v4
+	$limit += exactmetrics_count_third_party_ua_codes( $body, $type );
+
+	// Count all the codes from the page.
+	$total_count = substr_count( $body, $current_code );
+
+	// Count the `send_to` instances which are valid
+	$pattern = '/send_to[\'"]*?:\s*[\'"]' . $current_code . '/m';
+	if ( preg_match_all( $pattern, $body, $matches ) ) {
+		$total_count -= count( $matches[0] );
+	}
+
+	// Main property always has a ?id=(UA|G)-XXXXXXXX script
+	$connected_type = ExactMetrics()->auth->get_connected_type();
+	if ( $type === $connected_type && strpos( $body, 'googletagmanager.com/gtag/js?id=' . $current_code ) !== false ) {
+		// In that case, we can safely deduct one from the total count
+		-- $total_count;
+	}
+
+	if ( $total_count > $limit ) {
+		// Translators: The placeholders are for making the "We have detected multiple tracking codes" text bold & adding a link to support.
+		$message           = esc_html__( '%1$sWe have detected multiple tracking codes%2$s! You should remove non-ExactMetrics ones. If you need help finding them please %3$sread this article%4$s.', 'google-analytics-dashboard-for-wp' );
+		$url               = exactmetrics_get_url( 'site-health', 'comingsoon', 'https://www.exactmetrics.com/docs/how-to-find-duplicate-google-analytics-tracking-codes-in-wordpress/' );
+		$multiple_ua_error = sprintf(
+			$message,
+			'<b>',
+			'</b>',
+			'<a href="' . $url . '" target="_blank">',
+			'</a>'
+		);
+
+		$errors[] = $multiple_ua_error;
+	}
+
+	return $errors;
 }
 
 /**
@@ -1238,7 +1322,7 @@ function exactmetrics_count_third_party_ua_codes( $body ) {
  * @return array
  */
 function exactmetrics_is_code_installed_frontend() {
-		// Grab the front page html.
+	// Grab the front page html.
 	$request = wp_remote_request( home_url(), array(
 		'sslverify' => false,
 	) );
@@ -1252,48 +1336,12 @@ function exactmetrics_is_code_installed_frontend() {
 	$response_code = wp_remote_retrieve_response_code( $request );
 
 	if ( in_array( $response_code, $accepted_http_codes, true ) ) {
-
 		$body            = wp_remote_retrieve_body( $request );
-		$current_ua_code = exactmetrics_get_ua_to_output();
-		$ua_limit        = 2;
-		// If the ads addon is installed another UA is added to the page.
-		if ( class_exists( 'ExactMetrics_Ads' ) ) {
-			$ua_limit = 3;
-		}
-		// Translators: The placeholders are for making the "We noticed you're using a caching plugin" text bold.
-		$cache_error = sprintf( esc_html__( '%1$sWe noticed you\'re using a caching plugin or caching from your hosting provider.%2$s Be sure to clear the cache to ensure the tracking appears on all pages and posts. %3$s(See this guide on how to clear cache)%4$s.', 'google-analytics-dashboard-for-wp' ), '<b>', '</b>', ' <a href="https://www.wpbeginner.com/beginners-guide/how-to-clear-your-cache-in-wordpress/" target="_blank">', '</a>' );
 
-		// Translators: The placeholders are for making the "We have detected multiple tracking codes" text bold & adding a link to support.
-		$message           = esc_html__( '%1$sWe have detected multiple tracking codes%2$s! You should remove non-ExactMetrics ones. If you need help finding them please %3$sread this article%4$s.', 'google-analytics-dashboard-for-wp' );
-		$url               = exactmetrics_get_url( 'site-health', 'comingsoon', 'https://www.exactmetrics.com/docs/how-to-find-duplicate-google-analytics-tracking-codes-in-wordpress/' );
-		$multiple_ua_error = sprintf(
-			$message,
-			'<b>',
-			'</b>',
-			'<a href="' . $url . '" target="_blank">',
-			'</a>'
+		$errors = array_merge(
+			exactmetrics_detect_tracking_code_error( $body ),
+			exactmetrics_detect_tracking_code_error( $body, 'v4' )
 		);
-
-		// First, check if the tracking frontend code is present.
-		if ( false === strpos( $body, '__gaTracker' ) ) {
-			$errors[] = $cache_error;
-		} else {
-			// Check if the current UA code is actually present.
-			if ( $current_ua_code && false === strpos( $body, $current_ua_code ) ) {
-				// We have the tracking code but using another UA, so it's cached.
-				$errors[] = $cache_error;
-			}
-
-			$ua_limit += exactmetrics_count_third_party_ua_codes( $body );
-
-			// Grab all the UA codes from the page.
-			$pattern = '/UA-[0-9]+/m';
-			preg_match_all( $pattern, $body, $matches );
-			// If more than twice ( because MI has a ga-disable-UA also ), let them know to remove the others.
-			if ( ! empty( $matches[0] ) && is_array( $matches[0] ) && count( $matches[0] ) > $ua_limit ) {
-				$errors[] = $multiple_ua_error;
-			}
-		}
 	}
 
 	return $errors;
@@ -1319,7 +1367,7 @@ function exactmetrics_menu_highlight_color() {
  * @param string $url The url to which users get redirected.
  */
 function exactmetrics_custom_track_pretty_links_redirect( $url ) {
-	if ( ! function_exists( 'exactmetrics_mp_track_event_call' ) ) {
+	if ( ! function_exists( 'exactmetrics_mp_track_event_call' ) && ! function_exists( 'exactmetrics_mp_collect_v4') ) {
 		return;
 	}
 	// Try to determine if click originated on the same site.
@@ -1358,13 +1406,36 @@ function exactmetrics_custom_track_pretty_links_redirect( $url ) {
 		return;
 	}
 
-	$track_args = array(
-		't'  => 'event',
-		'ec' => $ec,
-		'ea' => $url,
-		'el' => 'external-redirect',
-	);
-	exactmetrics_mp_track_event_call( $track_args );
+	if ( exactmetrics_get_ua_to_output() ) {
+		$track_args = array(
+			't'  => 'event',
+			'ec' => $ec,
+			'ea' => $url,
+			'el' => 'external-redirect',
+		);
+		exactmetrics_mp_track_event_call( $track_args );
+	}
+
+	if ( exactmetrics_get_v4_id_to_output() ) {
+		$url_components = parse_url( $url );
+		$args = array(
+			'events' => array(
+				array(
+					'link_text' => 'external-redirect',
+					'link_url' => $url,
+					'link_domain' => $url_components['host'],
+					'outbound' => true,
+				)
+			)
+		);
+
+		if ( ! empty( $label ) ) {
+			$args['events'][0]['affiliate_label'] = $label;
+			$args['events'][0]['is_affiliate_link'] = true;
+		}
+
+		exactmetrics_mp_collect_v4( $args );
+	}
 }
 add_action( 'prli_before_redirect', 'exactmetrics_custom_track_pretty_links_redirect' );
 
@@ -1388,7 +1459,7 @@ function exactmetrics_get_current_post_type() {
 	return null;
 }
 
- /** Decode special characters, both alpha- (<) and numeric-based (').
+/** Decode special characters, both alpha- (<) and numeric-based (').
  *
  * @since 7.10.5
  *
@@ -1518,7 +1589,7 @@ function exactmetrics_tools_copy_url_to_prettylinks() {
                 localStorage.removeItem('ExactMetricsURL');
             });
         </script>
-    <?php }
+	<?php }
 }
 add_action( 'admin_footer', 'exactmetrics_tools_copy_url_to_prettylinks' );
 
@@ -1534,7 +1605,7 @@ function exactmetrics_skip_prettylinks_welcome_screen() {
 	$exactmetrics_reference = isset( $_GET['exactmetrics_reference'] ) ? $_GET['exactmetrics_reference'] : '';
 
 	if ( 'post-new.php' === $pagenow && 'pretty-link' === $post_type && 'url_builder' === $exactmetrics_reference ) {
-	    $onboard  = get_option( 'prli_onboard' );
+		$onboard  = get_option( 'prli_onboard' );
 
 		if ( $onboard == 'welcome' || $onboard == 'update' ) {
 			update_option( 'exactmetrics_backup_prli_onboard_value', $onboard );
@@ -1592,4 +1663,213 @@ function exactmetrics_require_upgrader( $custom_upgrader = true ) {
 		require_once plugin_dir_path( $base->file ) . '/includes/admin/licensing/skin.php';
 	}
 
+}
+
+/**
+ * Load headline analyzer if wp version is higher than/equal to 5.4
+ *
+ * @return boolean
+ * @since 7.12.3
+ *
+ */
+function exactmetrics_load_gutenberg_app() {
+	global $wp_version;
+
+	if ( version_compare( $wp_version, '5.4', '<' ) ) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Helper function for frontend script attributes
+ *
+ * @return string
+ * @since 7.12.3
+ *
+ *
+ */
+function exactmetrics_get_frontend_analytics_script_atts() {
+	$attr_string = '';
+
+	$attributes = apply_filters( 'exactmetrics_tracking_analytics_script_attributes', array(
+		'type'         => "text/javascript",
+		'data-cfasync' => 'false'
+	) );
+
+	if ( ! empty( $attributes ) ) {
+		foreach ( $attributes as $attr_name => $attr_value ) {
+			if ( ! empty( $attr_name ) ) {
+				$attr_string .= ' ' . sanitize_key( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
+			} else {
+				$attr_string .= ' ' . esc_attr( $attr_value );
+			}
+		}
+	}
+
+	return $attr_string;
+}
+
+/**
+ * Get native english speaking countries
+ *
+ * @return array
+ *
+ * @since 7.12.3
+ */
+function exactmetrics_get_english_speaking_countries() {
+	return array(
+		'AG' => __( 'Antigua and Barbuda', 'google-analytics-dashboard-for-wp' ),
+		'AU' => __( 'Australia', 'google-analytics-dashboard-for-wp' ),
+		'BB' => __( 'Barbados', 'google-analytics-dashboard-for-wp' ),
+		'BZ' => __( 'Belize', 'google-analytics-dashboard-for-wp' ),
+		'BW' => __( 'Botswana', 'google-analytics-dashboard-for-wp' ),
+		'BI' => __( 'Burundi', 'google-analytics-dashboard-for-wp' ),
+		'CM' => __( 'Cameroon', 'google-analytics-dashboard-for-wp' ),
+		'CA' => __( 'Canada', 'google-analytics-dashboard-for-wp' ),
+		'DM' => __( 'Dominica', 'google-analytics-dashboard-for-wp' ),
+		'FJ' => __( 'Fiji', 'google-analytics-dashboard-for-wp' ),
+		'GD' => __( 'Grenada', 'google-analytics-dashboard-for-wp' ),
+		'GY' => __( 'Guyana', 'google-analytics-dashboard-for-wp' ),
+		'GM' => __( 'Gambia', 'google-analytics-dashboard-for-wp' ),
+		'GH' => __( 'Ghana', 'google-analytics-dashboard-for-wp' ),
+		'IE' => __( 'Ireland', 'google-analytics-dashboard-for-wp' ),
+		'IN' => __( 'India', 'google-analytics-dashboard-for-wp' ),
+		'JM' => __( 'Jamaica', 'google-analytics-dashboard-for-wp' ),
+		'KE' => __( 'Kenya', 'google-analytics-dashboard-for-wp' ),
+		'KI' => __( 'Kiribati', 'google-analytics-dashboard-for-wp' ),
+		'LS' => __( 'Lesotho', 'google-analytics-dashboard-for-wp' ),
+		'LR' => __( 'Liberia', 'google-analytics-dashboard-for-wp' ),
+		'MW' => __( 'Malawi', 'google-analytics-dashboard-for-wp' ),
+		'MT' => __( 'Malta', 'google-analytics-dashboard-for-wp' ),
+		'MH' => __( 'Marshall Islands', 'google-analytics-dashboard-for-wp' ),
+		'MU' => __( 'Mauritius', 'google-analytics-dashboard-for-wp' ),
+		'FM' => __( 'Micronesia', 'google-analytics-dashboard-for-wp' ),
+		'NZ' => __( 'New Zealand', 'google-analytics-dashboard-for-wp' ),
+		'NA' => __( 'Namibia', 'google-analytics-dashboard-for-wp' ),
+		'NR' => __( 'Nauru', 'google-analytics-dashboard-for-wp' ),
+		'NG' => __( 'Nigeria', 'google-analytics-dashboard-for-wp' ),
+		'PK' => __( 'Pakistan', 'google-analytics-dashboard-for-wp' ),
+		'PW' => __( 'Palau', 'google-analytics-dashboard-for-wp' ),
+		'PG' => __( 'Papua New Guinea', 'google-analytics-dashboard-for-wp' ),
+		'PH' => __( 'Philippines', 'google-analytics-dashboard-for-wp' ),
+		'RW' => __( 'Rwanda', 'google-analytics-dashboard-for-wp' ),
+		'SG' => __( 'Singapore', 'google-analytics-dashboard-for-wp' ),
+		'KN' => __( 'St Kitts and Nevis', 'google-analytics-dashboard-for-wp' ),
+		'LC' => __( 'St Lucia', 'google-analytics-dashboard-for-wp' ),
+		'VC' => __( 'St Vincent and the Grenadines', 'google-analytics-dashboard-for-wp' ),
+		'SZ' => __( 'Swaziland', 'google-analytics-dashboard-for-wp' ),
+		'WS' => __( 'Samoa', 'google-analytics-dashboard-for-wp' ),
+		'SC' => __( 'Seychelles', 'google-analytics-dashboard-for-wp' ),
+		'SL' => __( 'Sierra Leone', 'google-analytics-dashboard-for-wp' ),
+		'SB' => __( 'Solomon Islands', 'google-analytics-dashboard-for-wp' ),
+		'ZA' => __( 'South Africa', 'google-analytics-dashboard-for-wp' ),
+		'SS' => __( 'South Sudan', 'google-analytics-dashboard-for-wp' ),
+		'SD' => __( 'Sudan', 'google-analytics-dashboard-for-wp' ),
+		'TT' => __( 'Trinidad and Tobago', 'google-analytics-dashboard-for-wp' ),
+		'BS' => __( 'The Bahamas', 'google-analytics-dashboard-for-wp' ),
+		'TZ' => __( 'Tanzania', 'google-analytics-dashboard-for-wp' ),
+		'TO' => __( 'Tonga', 'google-analytics-dashboard-for-wp' ),
+		'TV' => __( 'Tuvalu', 'google-analytics-dashboard-for-wp' ),
+		'GB' => __( 'United Kingdom', 'google-analytics-dashboard-for-wp' ),
+		'US' => __( 'United States of America', 'google-analytics-dashboard-for-wp' ),
+		'UG' => __( 'Uganda', 'google-analytics-dashboard-for-wp' ),
+		'VU' => __( 'Vanuatu', 'google-analytics-dashboard-for-wp' ),
+		'ZM' => __( 'Zambia', 'google-analytics-dashboard-for-wp' ),
+		'ZW' => __( 'Zimbabwe', 'google-analytics-dashboard-for-wp' ),
+	);
+}
+
+/**
+ * Helper function to check if the current user can install a plugin.
+ *
+ * @return bool
+ */
+function exactmetrics_can_install_plugins() {
+
+	if ( ! current_user_can( 'install_plugins' ) ) {
+		return false;
+	}
+
+	// Determine whether file modifications are allowed.
+	if ( function_exists( 'wp_is_file_mod_allowed' ) && ! wp_is_file_mod_allowed( 'exactmetrics_can_install' ) ) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Check if current date is between given dates. Date format: Y-m-d.
+ *
+ * @since 7.13.2
+ *
+ * @param string $start_date Start Date. Eg: 2021-01-01.
+ * @param string $end_date   End Date. Eg: 2021-01-14.
+ *
+ * @return bool
+ */
+function exactmetrics_date_is_between( $start_date, $end_date ) {
+
+	$current_date = current_time( 'Y-m-d' );
+
+	$start_date = date( 'Y-m-d', strtotime( $start_date ) );
+	$end_date   = date( 'Y-m-d', strtotime( $end_date ) );
+
+	if ( ( $current_date >= $start_date ) && ( $current_date <= $end_date ) ) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Check is All-In-One-Seo plugin is active or not.
+ *
+ * @since 7.17.0
+ *
+ * @return bool
+ */
+function exactmetrics_is_aioseo_active() {
+
+	if ( function_exists( 'aioseo' ) ) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Return AIOSEO Dashboard URL if plugin is active.
+ *
+ * @since 7.17.0
+ *
+ * @return string
+ */
+function exactmetrics_aioseo_dashboard_url() {
+	$url = '';
+
+	if ( function_exists( 'aioseo' ) ) {
+		$url = is_multisite() ? network_admin_url( 'admin.php?page=aioseo' ) : admin_url( 'admin.php?page=aioseo' );
+	}
+
+	return $url;
+}
+
+/**
+ * Check if AIOSEO Pro version is installed or not.
+ *
+ * @since 7.17.10
+ *
+ * @return bool
+ */
+function exactmetrics_is_installed_aioseo_pro() {
+	$installed_plugins = get_plugins();
+
+	if ( array_key_exists( 'all-in-one-seo-pack-pro/all_in_one_seo_pack.php', $installed_plugins ) ) {
+		return true;
+	}
+
+	return false;
 }
