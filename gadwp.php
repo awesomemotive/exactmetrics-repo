@@ -178,13 +178,13 @@ final class ExactMetrics_Lite {
 			self::$instance = new ExactMetrics_Lite();
 			self::$instance->file = __FILE__;
 
-			if ( ! self::$instance->check_compatibility() ) {
-				return self::$instance;
-			}
-
 			// Detect Pro version and return early
 			if ( defined( 'EXACTMETRICS_PRO_VERSION' ) ) {
 				add_action( 'admin_notices', array( self::$instance, 'exactmetrics_pro_notice' ) );
+				return self::$instance;
+			}
+
+			if ( ! self::$instance->check_compatibility() ) {
 				return self::$instance;
 			}
 
@@ -575,21 +575,20 @@ final class ExactMetrics_Lite {
  * @return void
  */
 function exactmetrics_lite_activation_hook( $network_wide ) {
-	require_once plugin_dir_path( __FILE__ ) . 'includes/compatibility-check.php';
-
 	$url = admin_url( 'plugins.php' );
 	// Check for MS dashboard
 	if ( is_network_admin() ) {
 		$url = network_admin_url( 'plugins.php' );
 	}
 
-	$compatibility = ExactMetrics_Compatibility_Check::get_instance();
-	$compatibility->maybe_deactivate_plugin( plugin_basename( __FILE__ ) );
-
 	if ( class_exists( 'ExactMetrics' ) ) {
 		deactivate_plugins( plugin_basename( __FILE__ ) );
 		wp_die( sprintf( esc_html__( 'Please uninstall and remove ExactMetrics Pro before activating Google Analytics Dashboard for WP (GADWP). The Lite version has not been activated. %1$sClick here to return to the Dashboard%2$s.', 'google-analytics-by-wordpress' ), '<a href="' . $url . '">', '</a>' ) );
 	}
+
+	require_once plugin_dir_path( __FILE__ ) . 'includes/compatibility-check.php';
+	$compatibility = ExactMetrics_Compatibility_Check::get_instance();
+	$compatibility->maybe_deactivate_plugin( plugin_basename( __FILE__ ) );
 
 	// Add transient to trigger redirect.
 	set_transient( '_exactmetrics_activation_redirect', 1, 30 );
