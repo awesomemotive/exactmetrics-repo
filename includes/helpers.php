@@ -1353,7 +1353,7 @@ function exactmetrics_is_code_installed_frontend() {
 function exactmetrics_menu_highlight_color() {
 
 	$color_scheme = get_user_option( 'admin_color' );
-	$color        = '#7cc048';
+	$color        = '#1da867';
 	if ( 'light' === $color_scheme || 'blue' === $color_scheme ) {
 		$color = '#5f3ea7';
 	}

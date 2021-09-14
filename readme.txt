@@ -4,7 +4,7 @@ Donate link: http://www.wpbeginner.com/wpbeginner-needs-your-help/
 Tags: analytics,google analytics,google analytics dashboard,google analytics plugin,google analytics widget,gtag
 Requires at least: 4.8.0
 Tested up to: 5.8
-Stable tag: 7.0.0
+Stable tag: 7.0.1
 Requires PHP: 5.5
 License: GPL v3
 
@@ -170,6 +170,9 @@ You can translate Google Analytics Dashboard for WP by ExactMetrics on [translat
 4. Want more features? <a href="https://www.exactmetrics.com/?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion">Purchase ExactMetrics Pro</a>!
 
 == Changelog ==
+= 7.0.1: September 14, 2021 =
+- Fix: We fixed an issue that caused certain 404 pages to return an invalid page title.
+
 = 7.0.0: September 1, 2021 =
 - New: Full Google Analytics v4 support! After working very closely with the Google Analytics team for many months, we're excited to unveil full support for Google's newest version of Google Analytics. Google Analytics 4 (GA4) is the latest version of Google’s web analytics platform, and it can track both websites and apps in the same property. It also has some new reporting features and can give you better, more in-depth insights into how users are interacting with your website. We've taken the time to ensure that users who run GAv4 can do so effortlessly, for example by ensuring your events from GAv3 will work the same in GAv4 without having to touch any code or configuration. You can learn all about GAv4 and ExactMetrics on our [announcement blog post](https://www.exactmetrics.com/announcing-google-analytics-4-dual-analytics-tracking-for-wordpress/?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion).
 - New: GAv3 + GAv4 Dual Tracking support. We're also excited to announce our exclusive dual-tracking feature. This feature lets you to track your site visitors to both a Google Analytics v3 (Universal) and a Google Analytics v4 (GAv4) property at the same time, which allows you to take advantage of the new GAv4 features without having to sacrifice your historical data. You can [learn more](https://www.exactmetrics.com/announcing-google-analytics-4-dual-analytics-tracking-for-wordpress/?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion) about this ExactMetrics exclusive feature on our [site](https://www.exactmetrics.com/announcing-google-analytics-4-dual-analytics-tracking-for-wordpress/?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion).

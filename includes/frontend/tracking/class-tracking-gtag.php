@@ -66,18 +66,26 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 	 * for the frontend_output() function to output. These are
 	 * generally dimensions and turned on GA features.
 	 *
-	 * @return array Options for the gtag config.
+	 * @param bool $encoded Whether to return a JavaScript object representation of the options
+	 *
+	 * @return array|string Options for the gtag config.
 	 * @since 7.15.0
 	 * @access public
 	 *
 	 */
-	public function frontend_tracking_options( $type = 'ua' ) {
+	public function frontend_tracking_options( $type = 'ua', $encoded = false ) {
 		global $wp_query;
 		$options = array();
 
 		$tracking_ids = exactmetrics_get_tracking_ids();
 		if ( empty( $tracking_ids ) ) {
-			return $options;
+			return $encoded ? wp_json_encode( $options ) : $options;
+		}
+
+		$placeholder = '';
+
+		if ( $encoded ) {
+			$placeholder = '!@#';
 		}
 
 //		$track_user = exactmetrics_track_user();
@@ -124,9 +132,9 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 					$linker_domains[] = $cross_domain['domain'];
 				}
 			}
-			$options['linker'] = json_encode( array(
+			$options['linker'] = array(
 				'domains' => $linker_domains,
-			) );
+			);
 		}
 
 		if ( exactmetrics_is_debug_mode() ) {
@@ -138,9 +146,9 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 
 		if ( is_404() ) {
 			if ( exactmetrics_get_option( 'hash_tracking', false ) ) {
-				$options['page_path'] = "'/404.html?page=' + document.location.pathname + document.location.search + location.hash + '&from=' + document.referrer";
+				$options['page_path'] = "${placeholder}'/404.html?page=' + document.location.pathname + document.location.search + location.hash + '&from=' + document.referrer${placeholder}";
 			} else {
-				$options['page_path'] = "'/404.html?page=' + document.location.pathname + document.location.search + '&from=' + document.referrer";
+				$options['page_path'] = "${placeholder}'/404.html?page=' + document.location.pathname + document.location.search + '&from=' + document.referrer${placeholder}";
 			}
 		} else if ( $wp_query->is_search ) {
 			$pushstr = "'/?s=";
@@ -154,10 +162,18 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 				$options['page_path'] = $pushstr . rawurlencode( $wp_query->query_vars['s'] ) . "&cat=plus-5-results'";
 			}
 		} else if ( exactmetrics_get_option( 'hash_tracking', false ) ) {
-			$options['page_path'] = 'location.pathname + location.search + location.hash';
+			$options['page_path'] = "${placeholder}location.pathname + location.search + location.hash${placeholder}";
 		}
 
 		$options = apply_filters( 'exactmetrics_frontend_tracking_options_gtag_end', $options, $type );
+
+		if ( $encoded ) {
+			return str_replace(
+				array( '"' . $placeholder, $placeholder . '"' ),
+				'',
+				wp_json_encode( $options )
+			);
+		}
 
 		return $options;
 	}
@@ -175,8 +191,8 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 	 *
 	 */
 	public function frontend_output() {
-		$options        = $this->frontend_tracking_options( 'ua' );
-		$options_v4     = $this->frontend_tracking_options( 'v4' );
+		$options        = $this->frontend_tracking_options( 'ua', true );
+		$options_v4     = $this->frontend_tracking_options( 'v4', true );
 		$persistent     = $this->frontend_tracking_options_persistent();
 		$connected_type = ExactMetrics()->auth->get_connected_type();
 		$v4_id          = exactmetrics_get_v4_id_to_output();
@@ -303,10 +319,10 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 						?>
 					} );
 					<?php if ( ! empty( $v4_id ) ): ?>
-					__gtagTracker( 'config', '<?php echo esc_js( $v4_id ); ?>', <?php echo wp_json_encode( $options_v4 ); ?> );
+					__gtagTracker( 'config', '<?php echo esc_js( $v4_id ); ?>', <?php echo $options_v4; ?> );
 					<?php endif; ?>
 					<?php if ( ! empty( $ua ) ): ?>
-					__gtagTracker( 'config', '<?php echo esc_js( $ua ); ?>', <?php echo wp_json_encode( $options ); ?> );
+					__gtagTracker( 'config', '<?php echo esc_js( $ua ); ?>', <?php echo $options; ?> );
 					<?php
 					endif;
 					/**

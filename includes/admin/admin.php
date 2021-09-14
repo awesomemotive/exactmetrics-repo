@@ -224,7 +224,7 @@ function exactmetrics_add_action_links( $links ) {
 
 	// If lite, show a link where they can get pro from
 	if ( ! exactmetrics_is_pro_version() ) {
-		$get_pro = '<a title="' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) .'" href="'. exactmetrics_get_upgrade_link( 'all-plugins', 'upgrade-link', "https://www.exactmetrics.com/lite/" ) .'" style="font-weight:700">' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) . '</a>';
+		$get_pro = '<a title="' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) .'" href="'. exactmetrics_get_upgrade_link( 'all-plugins', 'upgrade-link', "https://www.exactmetrics.com/lite/" ) .'" style="font-weight:700; color: #1da867;">' . esc_html__( 'Get ExactMetrics Pro', 'google-analytics-dashboard-for-wp' ) . '</a>';
 		array_unshift( $links, $get_pro );
 	}
 
