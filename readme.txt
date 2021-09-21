@@ -171,7 +171,7 @@ You can translate Google Analytics Dashboard for WP by ExactMetrics on [translat
 
 == Changelog ==
 = 7.0.2: September 21, 2021 =
-- Fix: We fixed an issue that caused the bounce rate box to appear twice on the dashboard widget.
+- Fix: We fixed an issue with the dashboard widget that caused the bounce rate box to appear twice.
 
 = 7.0.1: September 14, 2021 =
 - Fix: We fixed an issue that caused certain 404 pages to return an invalid page title.
@@ -225,4 +225,4 @@ You can translate Google Analytics Dashboard for WP by ExactMetrics on [translat
 - Fix: We added a value for the alt parameter of the images used in the Popular Posts widgets.
 - Fix: Our Popular Posts widgets had a potential infinite recursion error in certain situations so we added a check to prevent that.
 
-**See our <a href="https://www.exactmetrics.com/changelog?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion" target="_blank">changelog</a> for previous releases.**
+**See our <a href="https://www.monsterinsights.com/changelog?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion" target="_blank">changelog</a> for previous releases.**
