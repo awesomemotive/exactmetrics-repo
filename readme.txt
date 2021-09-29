@@ -4,7 +4,7 @@ Donate link: http://www.wpbeginner.com/wpbeginner-needs-your-help/
 Tags: analytics,google analytics,google analytics dashboard,google analytics plugin,google analytics widget,gtag
 Requires at least: 4.8.0
 Tested up to: 5.8
-Stable tag: 7.0.2
+Stable tag: 7.1.0
 Requires PHP: 5.5
 License: GPL v3
 
@@ -170,6 +170,11 @@ You can translate Google Analytics Dashboard for WP by ExactMetrics on [translat
 4. Want more features? <a href="https://www.exactmetrics.com/?utm_source=wprepo&utm_medium=link&utm_campaign=liteversion">Purchase ExactMetrics Pro</a>!
 
 == Changelog ==
+= 7.1.0: September 29, 2021 =
+- Tweak: We've updated some of the GAv4 report labels to be more accurate.
+- New in Pro: We've added Google Ads conversion tracking for WooCommerce, Easy Digital Downloads, and MemberPress.
+- New in Pro: We've added a new integration with EasyAffiliates for users using WooCommerce, Easy Digital Downloads, and MemberPress.
+
 = 7.0.2: September 21, 2021 =
 - Fix: We fixed an issue with the dashboard widget that caused the bounce rate box to appear twice.
 
