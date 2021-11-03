@@ -199,7 +199,7 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 		$ua             = exactmetrics_get_ua_to_output();
 		$main_id        = $connected_type === 'ua' ? $ua : $v4_id;
 		$src            = apply_filters( 'exactmetrics_frontend_output_gtag_src', '//www.googletagmanager.com/gtag/js?id=' . $main_id );
-		$compat_mode    = exactmetrics_get_option( 'gtagtracker_compatibility_mode', true );
+		$compat_mode    = apply_filters( 'exactmetrics_get_option_gtagtracker_compatibility_mode', true );
 		$compat         = $compat_mode ? 'window.gtag = __gtagTracker;' : '';
 		$track_user     = exactmetrics_track_user();
 		$output         = '';
@@ -284,6 +284,15 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 					}
 
 					function __gtagTracker( type, name, parameters ) {
+						if (!parameters) {
+							parameters = {};
+						}
+
+						if (parameters.send_to) {
+							__gtagDataLayer.apply( null, arguments );
+							return;
+						}
+
 						if ( type === 'event' ) {
 							<?php if ( $v4_id ): ?>
 								parameters.send_to = exactmetrics_frontend.v4_id;
@@ -301,7 +310,7 @@ class ExactMetrics_Tracking_Gtag extends ExactMetrics_Tracking_Abstract {
 
 							<?php if ( $ua ): ?>
 								parameters.send_to = exactmetrics_frontend.ua;
-								__gtagDataLayer.apply( null, arguments );
+								__gtagDataLayer( type, name, parameters );
 							<?php endif; ?>
 						} else {
 							__gtagDataLayer.apply( null, arguments );
